@@ -1,0 +1,24 @@
+# Rust build directory
+/target/
+**/target/
+
+# Cargo lock file (we're a workspace)
+Cargo.lock
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Debug files
+**/*.rs.bk
+
+# Environment files
+.env
+.env.local
+
+# Generated documentation
+/doc/
+**/doc/

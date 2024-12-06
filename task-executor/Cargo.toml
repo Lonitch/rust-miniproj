@@ -1,0 +1,8 @@
+[package]
+name = "task-executor"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+tokio = { version = "1.34.0", features = ["full"] }

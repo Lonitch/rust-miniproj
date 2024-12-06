@@ -1,3 +1,5 @@
+This is a repo for mini-projects written in Rust
+
 ## Projects
 ### Enhanced Config Parser with Enums
 
