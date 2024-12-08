@@ -1,0 +1,9 @@
+{
+  "name": "App",
+  "version": "0.0",
+  "mode": "development",
+  "settings": {
+    "max_connections": 30
+  },
+  "features": ["auth", "api", "logging"]
+}

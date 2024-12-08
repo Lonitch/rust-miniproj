@@ -1,0 +1,9 @@
+{
+  "name": "Dev App",
+  "version": "0.0.1",
+  "mode": "development",
+  "settings": {
+    "theme": "dark"
+  },
+  "features": ["debug"]
+}

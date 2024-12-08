@@ -47,11 +47,11 @@ impl Default for Settings
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config
 {
-  pub name: String,
-  pub version: String,
-  pub settings: Settings,
-  pub features: Vec<String>,
-  pub mode: Mode,
+  pub name: Option<String>,
+  pub version: Option<String>,
+  pub settings: Option<Settings>,
+  pub features: Option<Vec<String>>,
+  pub mode: Option<Mode>,
 }
 
 // Possible config errors
@@ -100,35 +100,43 @@ impl Validate for Config
     // - Validate settings and assign default values
     // - Ensure features array is not empty
     // - Check if value of Mode is one of the enum
-    if self.name.len() == 0 {
-      return Err(ConfigError::EmptyName);
+    match &self.name {
+      None => return Err(ConfigError::EmptyName),
+      Some(name) if name.trim().is_empty() => return Err(ConfigError::EmptyName),
+      _ => {},
     }
 
-    if self.version.len() == 0 {
-      return Err(ConfigError::EmptyVersion);
+    // Validate version is present and follows semver format
+    match &self.version {
+      None => return Err(ConfigError::EmptyVersion),
+      Some(version) if version.trim().is_empty() => return Err(ConfigError::EmptyVersion),
+      Some(version) => {
+        let parts: Vec<&str> = version.split('.').collect();
+        if parts.len() != 3
+           || !parts.iter()
+                    .all(|s| s.chars().all(|c| c.is_ascii_digit()))
+        {
+          return Err(ConfigError::InvalidVersion);
+        }
+      },
     }
 
-    if !self.version
-            .split('.')
-            .filter(|s| !s.is_empty() && s.chars().all(|c| c.is_ascii_digit()))
-            .count()
-       == 3
-    {
-      return Err(ConfigError::InvalidVersion);
+    match &self.features {
+      None => return Err(ConfigError::EmptyFeatures),
+      Some(features) if features.is_empty() => return Err(ConfigError::EmptyFeatures),
+      _ => {},
     }
 
-    if !self.features.len() == 0 {
-      return Err(ConfigError::EmptyFeatures);
+    let mut defaults = Settings::default();
+    if let Some(s) = &self.settings {
+      if s.theme.is_some() {
+        defaults.theme = s.theme.clone();
+      }
+      if s.max_connections.is_some() {
+        defaults.max_connections = s.max_connections;
+      }
     }
-
-    // TODO: is this the right way to set defaults?
-    let defaults = Settings::default();
-    if self.settings.theme.is_none() {
-      self.settings.theme = defaults.theme.clone();
-    }
-    if self.settings.max_connections.is_none() {
-      self.settings.max_connections = defaults.max_connections.clone();
-    }
+    self.settings = Some(defaults);
 
     Ok(())
   }

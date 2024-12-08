@@ -1,0 +1,6 @@
+{
+  "name": "My Application",
+  "version": "1.0.0",
+  "mode": "Production",
+  "features": ["auth", "api", "logging"]
+}
