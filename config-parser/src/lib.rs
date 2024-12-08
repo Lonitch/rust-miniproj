@@ -40,7 +40,7 @@ pub enum ConfigError
   InvalidVersion,
   EmptyFeatures,
   InvalidSettings(String),
-  InvalidMode(String),
+  InvalidMode,
 }
 
 impl Error for ConfigError {}
@@ -59,14 +59,13 @@ impl fmt::Display for ConfigError
       ConfigError::InvalidSettings(msg) => write!(f, "Invalid settings: {}", msg),
       ConfigError::InvalidMode => write!(f,
                                          "Invalid mode: must be Devlopment, Testing, or Production"),
-      _ => write!(f, "Unknown Error"),
     }
   }
 }
 
 pub trait Validate
 {
-  fn validate(&mut self) -> Result<(), Box<dyn Error>>;
+  fn validate(&mut self) -> Result<(), ConfigError>;
 }
 
 impl Validate for Config
@@ -79,11 +78,11 @@ impl Validate for Config
     // - Ensure features array is not empty
     // - Check if value of Mode is one of the enum
     if self.name.len() == 0 {
-      Err(ConfigError::EmptyName)
+      return Err(ConfigError::EmptyName);
     }
 
     if self.version.len() == 0 {
-      Err(ConfigError::EmptyVersion)
+      return Err(ConfigError::EmptyVersion);
     }
 
     if !self.version
@@ -117,7 +116,7 @@ pub fn parse_config(json: &str) -> Result<Config, ConfigError>
   let mut config: Config = from_json_str(json).map_err(|e| {
                                                 // TODO: a dirt workaround, what is the better way?
                                                 if e.to_string().contains("mode") {
-                                                  ConfigError::InvalidMode(e.to_string())
+                                                  ConfigError::InvalidMode
                                                 } else {
                                                   ConfigError::InvalidSettings(e.to_string())
                                                 }
