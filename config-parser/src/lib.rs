@@ -27,7 +27,7 @@ impl<'de> Deserialize<'de> for Mode
   }
 }
 
-// Optional settings
+// Optional settings that has one method: update
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Settings
 {
@@ -41,6 +41,20 @@ impl Default for Settings
   {
     Settings { theme: Some("default".to_string()),
                max_connections: Some(10u32) }
+  }
+}
+
+impl Settings
+{
+  pub fn update(&mut self,
+                other: &Settings)
+  {
+    if let Some(theme) = &other.theme {
+      self.theme = Some(theme.clone());
+    }
+    if let Some(max_conn) = other.max_connections {
+      self.max_connections = Some(max_conn);
+    }
   }
 }
 
@@ -129,12 +143,7 @@ impl Validate for Config
 
     let mut defaults = Settings::default();
     if let Some(s) = &self.settings {
-      if s.theme.is_some() {
-        defaults.theme = s.theme.clone();
-      }
-      if s.max_connections.is_some() {
-        defaults.max_connections = s.max_connections;
-      }
+      defaults.update(s)
     }
     self.settings = Some(defaults);
 
