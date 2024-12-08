@@ -3,14 +3,28 @@ use serde_json::from_str as from_json_str;
 use std::error::Error;
 use std::fmt;
 
-// TODO: Implement custom deserialization for Mode to support case-insensitive parsing
-// Hint: Implement Deserialize manually instead of deriving it
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, PartialEq)]
 pub enum Mode
 {
   Development,
   Production,
   Testing,
+}
+
+// TODO: still don't understand why lifetime is needed here
+impl<'de> Deserialize<'de> for Mode
+{
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where D: serde::Deserializer<'de>
+  {
+    let s = String::deserialize(deserializer)?;
+    match s.to_lowercase().as_str() {
+      "development" => Ok(Mode::Development),
+      "production" => Ok(Mode::Production),
+      "testing" => Ok(Mode::Testing),
+      _ => Err(serde::de::Error::custom("invalid mode")),
+    }
+  }
 }
 
 // Optional settings
@@ -19,6 +33,15 @@ pub struct Settings
 {
   pub theme: Option<String>,
   pub max_connections: Option<u32>,
+}
+
+impl Default for Settings
+{
+  fn default() -> Settings
+  {
+    Settings { theme: Some("default".to_string()),
+               max_connections: Some(10u32) }
+  }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -98,12 +121,13 @@ impl Validate for Config
       return Err(ConfigError::EmptyFeatures);
     }
 
-    // TODO: is this the right way to set defaults? should I impl Default?
+    // TODO: is this the right way to set defaults?
+    let defaults = Settings::default();
     if self.settings.theme.is_none() {
-      self.settings.theme = Some("default".to_string());
+      self.settings.theme = defaults.theme.clone();
     }
     if self.settings.max_connections.is_none() {
-      self.settings.max_connections = Some(10u32);
+      self.settings.max_connections = defaults.max_connections.clone();
     }
 
     Ok(())
@@ -114,7 +138,8 @@ pub fn parse_config(json: &str) -> Result<Config, ConfigError>
 {
   // TODO: format is weird, don't know how to shift the "if" forward in rustfmt.toml
   let mut config: Config = from_json_str(json).map_err(|e| {
-                                                // TODO: a dirt workaround, what is the better way?
+                                                // TODO: a dirt workaround using custom err msg,
+                                                // what is the better way?
                                                 if e.to_string().contains("mode") {
                                                   ConfigError::InvalidMode
                                                 } else {
