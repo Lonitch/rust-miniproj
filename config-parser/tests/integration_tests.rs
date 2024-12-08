@@ -65,6 +65,7 @@ fn test_default_settings()
                       "name": "DefaultApp",
                       "version": "2.0.0",
                       "features": ["default_feature"],
+                      "settings": {},
                       "mode": "production"
                   }).to_string();
 
