@@ -1,3 +1,5 @@
+use tokio::time::Duration;
+
 /// Represents the priority of a task.
 pub enum Priority
 {
@@ -14,52 +16,59 @@ pub struct Payload
   pub priority: Priority,
 }
 
+pub fn generate_payloads(num: u32) -> Vec<Payload>
+{
+  let mut arr = vec![];
+  for _ in 0..=num {
+    let url = format!("https://api.example.com/task/{}",
+                      (0..8).map(|_| rand::random::<char>())
+                            .collect::<String>());
+    let task_id = rand::random::<u32>();
+    let sd = rand::random::<f32>();
+    let priority = match sd {
+      sd if sd < 0.33 => Priority::Low,
+      sd if sd < 0.66 => Priority::Medium,
+      _ => Priority::High,
+    };
+    arr.push(Payload { url, task_id, priority });
+  }
+  arr
+}
+
 /// Represents the result of a task.
+#[derive(Debug)]
 pub struct TaskResult
 {
   pub task_id: u32,
   pub status: String,
 }
 
-/// Enum to handle possible execution errors.
-pub enum ExecutorError {
-  // Define error variants here
+impl std::fmt::Display for TaskResult
+{
+  fn fmt(&self,
+         f: &mut std::fmt::Formatter<'_>)
+         -> std::fmt::Result
+  {
+    write!(f,
+           "Task {} - Status: {}",
+           self.task_id, self.status)
+  }
 }
-
 /// Simulates an asynchronous API call based on the task's payload.
-pub async fn simulate_api_call(payload: Payload) -> Result<TaskResult, ExecutorError>
+pub async fn simulate_api_call(payload: &Payload) -> TaskResult
 {
-  // TODO: Implement the simulation logic
-  unimplemented!()
-}
-
-/// Manages and executes a list of tasks.
-pub struct TaskExecutor
-{
-  pub tasks: Vec<Payload>,
-}
-
-impl TaskExecutor
-{
-  /// Adds a task to the executor.
-  pub fn add_task(&mut self,
-                  task: Payload)
+  let base_delay = match payload.priority {
+    Priority::High => 1.0,
+    Priority::Medium => 2.0,
+    Priority::Low => 3.0,
+  };
+  let sleep_fut = tokio::time::sleep(Duration::from_secs_f32(rand::random::<f32>() * base_delay));
+  match tokio::time::timeout(Duration::from_secs_f32(base_delay / 2.0),
+                             sleep_fut).await
   {
-    // TODO: Implement adding a task
-    unimplemented!()
+    Ok(_) => TaskResult { task_id: payload.task_id,
+                          status: "done".to_string() },
+    Err(_) => TaskResult { task_id: payload.task_id,
+                           status: "timeout".to_string() },
   }
-
-  /// Executes all tasks concurrently.
-  pub async fn execute_all(&self) -> Result<Vec<TaskResult>, ExecutorError>
-  {
-    // TODO: Implement concurrent execution of tasks
-    unimplemented!()
-  }
-}
-
-/// Initializes a new TaskExecutor.
-pub fn initialize_executor() -> TaskExecutor
-{
-  // TODO: Implement executor initialization
-  unimplemented!()
 }
