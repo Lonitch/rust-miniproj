@@ -35,7 +35,7 @@ pub struct Payload
 pub fn generate_payloads(num: u32) -> Vec<Payload>
 {
   let mut arr = vec![];
-  for _ in 0..=num {
+  for _ in 0..num {
     let url = format!("https://api.example.com/task/{}",
                       (0..8).map(|_| rand::random::<char>())
                             .collect::<String>());

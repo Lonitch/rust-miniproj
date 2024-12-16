@@ -1,10 +1,5 @@
-// TODO: Update main to use ApiConfiguration
-// - Create ApiConfiguration instance at start
-// - Clone Arc for each thread to share metrics
-// - Replace direct simulate_api_call with api_config.simulate_api_call
-
 use std::sync::Arc;
-use task_executor::{generate_payloads, ApiConfig, Priority};
+use task_executor::{generate_payloads, ApiConfig};
 
 #[tokio::main]
 async fn main()
@@ -15,18 +10,6 @@ async fn main()
   let payload_vec = generate_payloads(num_payloads);
 
   let api_config = Arc::new(ApiConfig::new());
-
-  let mut high_priority = Vec::new();
-  let mut medium_priority = Vec::new();
-  let mut low_priority = Vec::new();
-
-  for payload in &payload_vec {
-    match payload.priority {
-      Priority::High => high_priority.push(payload.task_id),
-      Priority::Medium => medium_priority.push(payload.task_id),
-      Priority::Low => low_priority.push(payload.task_id),
-    }
-  }
 
   let mut handles = Vec::new();
 
@@ -49,16 +32,13 @@ async fn main()
   let _results = tokio::join!(futures::future::join_all(handles)).0;
 
   println!("\nResults by Priority:");
-  for (priority_name, priority_tasks) in
-    ["High", "Medium", "Low"].iter()
-                             .zip([&high_priority, &medium_priority, &low_priority])
-  {
+  for priority_name in ["High", "Medium", "Low"].iter() {
     println!("\n{} Priority Tasks:", priority_name);
     for result in api_config.metrics
                             .lock()
                             .await
                             .iter()
-                            .filter(|&r| priority_tasks.contains(&r.task_id))
+                            .filter(|&r| &r.priority.to_string() == priority_name)
     {
       println!("{}", result);
     }
