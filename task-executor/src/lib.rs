@@ -1,11 +1,27 @@
+use futures::lock::Mutex;
 use tokio::time::Duration;
 
 /// Represents the priority of a task.
+#[derive(Debug, Clone)]
 pub enum Priority
 {
   High,
   Medium,
   Low,
+}
+
+impl std::fmt::Display for Priority
+{
+  fn fmt(&self,
+         f: &mut std::fmt::Formatter<'_>)
+         -> std::fmt::Result
+  {
+    match self {
+      Priority::Low => write!(f, "Low"),
+      Priority::Medium => write!(f, "Medium"),
+      Priority::High => write!(f, "High"),
+    }
+  }
 }
 
 /// Represents the input payload for a task.
@@ -26,8 +42,8 @@ pub fn generate_payloads(num: u32) -> Vec<Payload>
     let task_id = rand::random::<u32>();
     let sd = rand::random::<f32>();
     let priority = match sd {
-      sd if sd < 0.33 => Priority::Low,
-      sd if sd < 0.66 => Priority::Medium,
+      sd if sd <= 0.33 => Priority::Low,
+      sd if 0.33 < sd && sd <= 0.66 => Priority::Medium,
       _ => Priority::High,
     };
     arr.push(Payload { url, task_id, priority });
@@ -36,10 +52,11 @@ pub fn generate_payloads(num: u32) -> Vec<Payload>
 }
 
 /// Represents the result of a task.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TaskResult
 {
   pub task_id: u32,
+  pub priority: Priority,
   pub status: String,
 }
 
@@ -50,25 +67,50 @@ impl std::fmt::Display for TaskResult
          -> std::fmt::Result
   {
     write!(f,
-           "Task {} - Status: {}",
-           self.task_id, self.status)
+           "Task {} - Priority: {} | Status: {}",
+           self.task_id, self.priority, self.status)
   }
 }
-/// Simulates an asynchronous API call based on the task's payload.
-pub async fn simulate_api_call(payload: &Payload) -> TaskResult
+
+pub struct ApiConfig
 {
-  let base_delay = match payload.priority {
-    Priority::High => 1.0,
-    Priority::Medium => 2.0,
-    Priority::Low => 3.0,
-  };
-  let sleep_fut = tokio::time::sleep(Duration::from_secs_f32(rand::random::<f32>() * base_delay));
-  match tokio::time::timeout(Duration::from_secs_f32(base_delay / 2.0),
-                             sleep_fut).await
+  pub metrics: Mutex<Vec<TaskResult>>,
+}
+
+impl ApiConfig
+{
+  pub fn new() -> Self
   {
-    Ok(_) => TaskResult { task_id: payload.task_id,
-                          status: "done".to_string() },
-    Err(_) => TaskResult { task_id: payload.task_id,
-                           status: "timeout".to_string() },
+    ApiConfig { metrics: Mutex::new(Vec::new()) }
+  }
+  pub async fn simulate_api_call(&self,
+                                 payload: &Payload)
+                                 -> TaskResult
+  {
+    let base_delay = match payload.priority {
+      Priority::High => 1.0,
+      Priority::Medium => 2.0,
+      Priority::Low => 3.0,
+    };
+    let sleep_fut = tokio::time::sleep(Duration::from_secs_f32(rand::random::<f32>() * base_delay));
+    let result = match tokio::time::timeout(Duration::from_secs_f32(base_delay / 2.0),
+                                            sleep_fut).await
+    {
+      Ok(_) => TaskResult { task_id: payload.task_id,
+                            priority: payload.priority.clone(),
+                            status: "done".to_string() },
+      Err(_) => TaskResult { task_id: payload.task_id,
+                             priority: payload.priority.clone(),
+                             status: "timeout".to_string() },
+    };
+    let mut metrics = self.metrics.lock().await;
+    if let Some(existing) = metrics.iter_mut()
+                                   .find(|m| m.task_id == result.task_id)
+    {
+      *existing = result.clone();
+    } else {
+      metrics.push(result.clone());
+    }
+    result
   }
 }

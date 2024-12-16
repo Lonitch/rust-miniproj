@@ -1,4 +1,10 @@
-use task_executor::{generate_payloads, simulate_api_call, Priority};
+// TODO: Update main to use ApiConfiguration
+// - Create ApiConfiguration instance at start
+// - Clone Arc for each thread to share metrics
+// - Replace direct simulate_api_call with api_config.simulate_api_call
+
+use std::sync::Arc;
+use task_executor::{generate_payloads, ApiConfig, Priority};
 
 #[tokio::main]
 async fn main()
@@ -7,6 +13,8 @@ async fn main()
 
   let num_payloads = 10;
   let payload_vec = generate_payloads(num_payloads);
+
+  let api_config = Arc::new(ApiConfig::new());
 
   let mut high_priority = Vec::new();
   let mut medium_priority = Vec::new();
@@ -23,23 +31,22 @@ async fn main()
   let mut handles = Vec::new();
 
   for payload in payload_vec {
+    let api_config = Arc::clone(&api_config);
     let handle = tokio::spawn(async move {
       let mut retries = 3;
-      let mut result = simulate_api_call(&payload).await;
+      let mut result = api_config.simulate_api_call(&payload).await;
 
       while retries > 0 && result.status == "timeout" {
         retries -= 1;
         println!("Task {} timed out, retrying... {} attempts left",
                  result.task_id, retries);
-        result = simulate_api_call(&payload).await;
+        result = api_config.simulate_api_call(&payload).await;
       }
-
-      result
     });
     handles.push(handle);
   }
 
-  let results = tokio::join!(futures::future::join_all(handles)).0;
+  let _results = tokio::join!(futures::future::join_all(handles)).0;
 
   println!("\nResults by Priority:");
   for (priority_name, priority_tasks) in
@@ -47,9 +54,11 @@ async fn main()
                              .zip([&high_priority, &medium_priority, &low_priority])
   {
     println!("\n{} Priority Tasks:", priority_name);
-    for result in results.iter()
-                         .filter_map(|r| r.as_ref().ok())
-                         .filter(|r| priority_tasks.contains(&r.task_id))
+    for result in api_config.metrics
+                            .lock()
+                            .await
+                            .iter()
+                            .filter(|&r| priority_tasks.contains(&r.task_id))
     {
       println!("{}", result);
     }
