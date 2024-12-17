@@ -4,7 +4,7 @@ use task_executor::{generate_payloads, ApiConfig};
 #[tokio::main]
 async fn main()
 {
-  println!("Task Executor Project");
+  println!("Task Executor Project\n");
 
   let num_payloads = 10;
   let payload_vec = generate_payloads(num_payloads);
@@ -37,7 +37,7 @@ async fn main()
     for result in api_config.metrics
                             .lock()
                             .await
-                            .iter()
+                            .values()
                             .filter(|&r| &r.priority.to_string() == priority_name)
     {
       println!("{}", result);

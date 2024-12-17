@@ -1,4 +1,5 @@
 use futures::lock::Mutex;
+use std::collections::HashMap;
 use tokio::time::Duration;
 
 /// Represents the priority of a task.
@@ -74,14 +75,14 @@ impl std::fmt::Display for TaskResult
 
 pub struct ApiConfig
 {
-  pub metrics: Mutex<Vec<TaskResult>>,
+  pub metrics: Mutex<HashMap<u32, TaskResult>>,
 }
 
 impl ApiConfig
 {
   pub fn new() -> Self
   {
-    ApiConfig { metrics: Mutex::new(Vec::new()) }
+    ApiConfig { metrics: Mutex::new(HashMap::new()) }
   }
   pub async fn simulate_api_call(&self,
                                  payload: &Payload)
@@ -104,13 +105,7 @@ impl ApiConfig
                              status: "timeout".to_string() },
     };
     let mut metrics = self.metrics.lock().await;
-    if let Some(existing) = metrics.iter_mut()
-                                   .find(|m| m.task_id == result.task_id)
-    {
-      *existing = result.clone();
-    } else {
-      metrics.push(result.clone());
-    }
+    metrics.insert(result.task_id, result.clone());
     result
   }
 }
