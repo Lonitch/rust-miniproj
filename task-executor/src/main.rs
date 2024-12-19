@@ -13,6 +13,8 @@ async fn main()
 
   let mut handles = Vec::new();
 
+  // threads usually listen to mpsc channel,
+  // receiver.receive blocks a thread
   for payload in payload_vec {
     let api_config = Arc::clone(&api_config);
     let handle = tokio::spawn(async move {
@@ -29,6 +31,8 @@ async fn main()
     handles.push(handle);
   }
 
+  // blocks the main thread
+  // better iterate to check JoinError
   let _results = tokio::join!(futures::future::join_all(handles)).0;
 
   println!("\nResults by Priority:");
