@@ -2,7 +2,8 @@
 resolver = "2"
 members = [
     "config-parser",
-    "task-executor"
+    "task-executor",
+    "doc-lifetimes"
 ]
 
 [workspace.package]
