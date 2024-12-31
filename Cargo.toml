@@ -3,7 +3,8 @@ resolver = "2"
 members = [
     "config-parser",
     "task-executor",
-    "doc-lifetimes"
+    "doc-lifetimes",
+    "mpsc-chat"
 ]
 
 [workspace.package]
