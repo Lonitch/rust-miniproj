@@ -14,6 +14,12 @@ pub struct Document
   pub sections: Vec<Section>,
 }
 
+impl Default for Document {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Document
 {
   pub fn new() -> Self
@@ -22,9 +28,9 @@ impl Document
   }
 
   // returned section reference is tied to the document's lifetime
-  pub fn get_section<'a>(&'a mut self,
+  pub fn get_section(&mut self,
                          idx: usize)
-                         -> Option<&'a mut Section>
+                         -> Option<&mut Section>
   {
     self.sections.get_mut(idx)
   }
@@ -51,9 +57,9 @@ impl Section
   }
 
   // returned paragraph reference is tied to the section's lifetime
-  pub fn get_paragraph<'a>(&'a mut self,
+  pub fn get_paragraph(&mut self,
                            index: usize)
-                           -> Option<&'a mut Paragraph>
+                           -> Option<&mut Paragraph>
   {
     self.paragraphs.get_mut(index)
   }

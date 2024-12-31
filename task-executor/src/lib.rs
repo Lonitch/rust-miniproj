@@ -78,6 +78,12 @@ pub struct ApiConfig
   pub metrics: Mutex<HashMap<u32, TaskResult>>,
 }
 
+impl Default for ApiConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ApiConfig
 {
   pub fn new() -> Self

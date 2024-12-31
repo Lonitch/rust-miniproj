@@ -44,10 +44,10 @@ fn to_markdown(doc: &Document) -> String
   for section in &doc.sections {
     output.push_str("# ");
     output.push_str(&section.title);
-    output.push_str("\n");
+    output.push('\n');
     for para in &section.paragraphs {
       output.push_str(para.content());
-      output.push_str("\n");
+      output.push('\n');
     }
   }
   output
@@ -58,7 +58,7 @@ fn main() -> io::Result<()>
   let args: Vec<String> = env::args().collect();
   if args.len() < 2 {
     eprintln!("Usage: {} <filename>",
-              args.get(0).unwrap_or(&"main".to_string()));
+              args.first().unwrap_or(&"main".to_string()));
     return Ok(());
   }
 
