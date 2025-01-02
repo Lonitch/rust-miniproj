@@ -43,6 +43,8 @@ async fn manage_rooms(
 ) {
     loop {
         let action = {
+            // create a fresh RNG so we don't hold ThreadRng across .await
+            // used only inside brace, and then dropped before hit any .await
             let mut rng = rand::thread_rng();
             rng.gen_range(0..5)
         };
@@ -51,6 +53,7 @@ async fn manage_rooms(
             0..=3 => {
                 // CREATE ROOM
                 let room = random_room_name();
+                // TODO: why not wrap this lock with {} ?
                 let mut srv = server.lock().await;
                 let result = srv.create_room(room.clone()).await;
                 drop(srv);
@@ -78,6 +81,7 @@ async fn manage_rooms(
             }
             _ => {
                 // REMOVE ROOM
+                // TODO: why wrap this lock with {} ?
                 let existing_rooms = { rooms.lock().await.clone() };
                 if !existing_rooms.is_empty() {
                     let chosen_room = {
@@ -99,6 +103,7 @@ async fn manage_rooms(
                         }
                     }
 
+                    // TODO: why NOT wrap this?
                     let mut srv2 = server.lock().await;
                     match srv2.remove_room(&chosen_room).await {
                         Ok(_) => {

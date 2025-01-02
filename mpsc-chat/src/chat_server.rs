@@ -23,6 +23,7 @@ impl ChatServer {
         Ok(())
     }
 
+    // TODO: is this safe to do? any winding-down plan?
     pub async fn remove_room(&mut self, name: &str) -> Result<()> {
         let room = self.rooms.get(name).ok_or(ChatError::RoomNotFound)?;
 
@@ -34,6 +35,10 @@ impl ChatServer {
         Ok(())
     }
 
+    // TODO: is this a good way? 
+    // joining means that you're listening to the chatroom.
+    // I suspect this function is the source cause of printing 
+    // duplicated message
     pub async fn join_room(&mut self, room: &str, user: String) -> Result<()> {
         let chat_room = self.rooms.get_mut(room).ok_or(ChatError::RoomNotFound)?;
 

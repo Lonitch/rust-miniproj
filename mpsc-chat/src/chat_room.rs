@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+// TODO: did not use mpsc since we need to broadcast msgs to all chatroom subscriber
 use tokio::sync::broadcast;
 use crate::error::{ChatError, Result};
 use crate::message::ChatMessage;
