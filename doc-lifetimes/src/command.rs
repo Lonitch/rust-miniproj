@@ -19,116 +19,124 @@ pub enum Command {
     Unknown, // fallback if we can’t parse the user input
 }
 
-/// Parse a single input line into a `Command`.
-pub fn parse_command(line: &str) -> Command {
-    let mut parts = line.split_whitespace();
-    let main_cmd = parts.next().unwrap_or("").to_lowercase();
-
-    match main_cmd.as_str() {
-        "" => Command::Unknown, // empty line
-        "help" | "h" => Command::Help,
-        "quit" | "q" => Command::Quit,
-
-        // "list sections"
-        "list" => {
-            let sub_cmd = parts.next().unwrap_or("").to_lowercase();
-            if sub_cmd == "sec" {
-                Command::ListSections
-            } else {
-                Command::Unknown
-            }
+/// Command::from(some_str) results an Command Option
+impl From<&str> for Command {
+    fn from(line: &str) -> Self {
+        // Split the input into whitespace-separated tokens
+        let tokens: Vec<_> = line.split_whitespace().collect();
+        if tokens.is_empty() {
+            // Empty line
+            return Command::Unknown;
         }
 
-        // "save <filename>"
-        "save" => {
-            let filename = parts.next().unwrap_or("").to_string();
-            if filename.is_empty() {
-                Command::Unknown
-            } else {
-                Command::Save(filename)
-            }
-        }
+        // The primary command is always the first token in lowercase
+        let main_cmd = tokens[0].to_lowercase();
 
-        // "show sec <idx>"
-        "show" => {
-            let entity = parts.next().unwrap_or("").to_lowercase(); // e.g. "sec"
-            if entity == "sec" {
-                if let Some(idx_str) = parts.next() {
-                    if let Ok(idx) = idx_str.parse::<usize>() {
-                        return Command::ShowSec(idx);
-                    }
-                }
-            }
-            Command::Unknown
-        }
+        match main_cmd.as_str() {
+            // "help" or "h"
+            "help" | "h" => Command::Help,
 
-        // "add sec <title>"
-        "add" => {
-            let entity = parts.next().unwrap_or("").to_lowercase(); // e.g. "sec"
-            match entity.as_str() {
-                "sec" => {
-                    // Everything remaining is the section title (join with space)
-                    let title: String = parts.collect::<Vec<&str>>().join(" ");
-                    if title.is_empty() {
-                        Command::Unknown
-                    } else {
-                        Command::AddSec(title)
-                    }
-                }
-                "par" => {
-                    // "add par <idx> <content>"
-                    // Next piece is <idx>, everything else is <content>.
-                    if let Some(idx_str) = parts.next() {
-                        if let Ok(idx) = idx_str.parse::<usize>() {
-                            // rest is the paragraph content
-                            let content: String = parts.collect::<Vec<&str>>().join(" ");
-                            return Command::AddPar(idx, content);
-                        }
-                    }
+            // "quit" or "q"
+            "quit" | "q" => Command::Quit,
+
+            // "list sec"
+            "list" => {
+                // Safe check for second token
+                if tokens.get(1).map(|s| s.to_lowercase()) == Some("sec".into()) {
+                    Command::ListSections
+                } else {
                     Command::Unknown
                 }
-                _ => Command::Unknown,
             }
-        }
 
-        // "edit sec <idx> <title>" or "edit par <sidx> <pidx> <content>"
-        "edit" => {
-            let entity = parts.next().unwrap_or("").to_lowercase(); // "sec" or "par"
-            match entity.as_str() {
-                "sec" => {
-                    // next is <idx>, rest is <title>
-                    if let Some(idx_str) = parts.next() {
+            // "save <filename>"
+            "save" => {
+                let filename = tokens.get(1).unwrap_or(&"").to_string();
+                if filename.is_empty() {
+                    Command::Unknown
+                } else {
+                    Command::Save(filename)
+                }
+            }
+
+            // "show sec <idx>"
+            "show" => {
+                let entity = tokens.get(1).unwrap_or(&"").to_lowercase();
+                if entity == "sec" {
+                    if let Some(idx_str) = tokens.get(2) {
                         if let Ok(idx) = idx_str.parse::<usize>() {
-                            let title: String = parts.collect::<Vec<&str>>().join(" ");
-                            return Command::EditSec(idx, title);
+                            return Command::ShowSec(idx);
                         }
                     }
-                    Command::Unknown
                 }
-                "par" => {
-                    // next two are <sidx> <pidx>, then rest is <content>
-                    if let Some(sidx_str) = parts.next() {
-                        if let Ok(sidx) = sidx_str.parse::<usize>() {
-                            if let Some(pidx_str) = parts.next() {
-                                if let Ok(pidx) = pidx_str.parse::<usize>() {
-                                    let content: String = parts.collect::<Vec<&str>>().join(" ");
-                                    return Command::EditPar(sidx, pidx, content);
-                                }
+                Command::Unknown
+            }
+
+            // "add sec <title>" OR "add par <idx> <content>"
+            "add" => {
+                let entity = tokens.get(1).unwrap_or(&"").to_lowercase();
+                match entity.as_str() {
+                    "sec" => {
+                        // Everything after "add sec" is the title
+                        let title = tokens[2..].join(" ");
+                        if title.is_empty() {
+                            Command::Unknown
+                        } else {
+                            Command::AddSec(title)
+                        }
+                    }
+                    "par" => {
+                        // tokens[2] should be <idx>, everything after is paragraph content
+                        if let Some(idx_str) = tokens.get(2) {
+                            if let Ok(idx) = idx_str.parse::<usize>() {
+                                let content = tokens[3..].join(" ");
+                                return Command::AddPar(idx, content);
                             }
                         }
+                        Command::Unknown
                     }
-                    Command::Unknown
+                    _ => Command::Unknown,
                 }
-                _ => Command::Unknown,
             }
-        }
 
-        _ => Command::Unknown,
+            // "edit sec <idx> <title>" OR "edit par <sidx> <pidx> <content>"
+            "edit" => {
+                let entity = tokens.get(1).unwrap_or(&"").to_lowercase();
+                match entity.as_str() {
+                    "sec" => {
+                        // tokens[2] = <idx>, tokens[3..] = new title
+                        if let Some(idx_str) = tokens.get(2) {
+                            if let Ok(idx) = idx_str.parse::<usize>() {
+                                let new_title = tokens[3..].join(" ");
+                                return Command::EditSec(idx, new_title);
+                            }
+                        }
+                        Command::Unknown
+                    }
+                    "par" => {
+                        // tokens[2] = <sidx>, tokens[3] = <pidx>, tokens[4..] = content
+                        if let (Some(sidx_str), Some(pidx_str)) = (tokens.get(2), tokens.get(3)) {
+                            if let (Ok(sidx), Ok(pidx)) =
+                                (sidx_str.parse::<usize>(), pidx_str.parse::<usize>())
+                            {
+                                let content = tokens[4..].join(" ");
+                                return Command::EditPar(sidx, pidx, content);
+                            }
+                        }
+                        Command::Unknown
+                    }
+                    _ => Command::Unknown,
+                }
+            }
+
+            // Anything else is unknown
+            _ => Command::Unknown,
+        }
     }
 }
 
 pub fn handle_command(line: &str, doc: &mut Document) -> std::io::Result<()> {
-    let command = parse_command(line);
+    let command = Command::from(line);
     match command {
         Command::Help => {
             println!("Commands:");
