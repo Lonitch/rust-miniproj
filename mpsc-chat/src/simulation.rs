@@ -81,8 +81,8 @@ async fn manage_rooms(
             }
             _ => {
                 // REMOVE ROOM
-                // TODO: why wrap this lock with {} ?
-                let existing_rooms = { rooms.lock().await.clone() };
+                // TODO: why not wrap this lock with {} ?
+                let existing_rooms =  rooms.lock().await.clone();
                 if !existing_rooms.is_empty() {
                     let chosen_room = {
                         let mut rng = rand::thread_rng();

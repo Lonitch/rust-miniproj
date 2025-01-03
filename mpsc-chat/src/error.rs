@@ -7,4 +7,4 @@ pub enum ChatError {
     RoomNotEmpty,
 }
 
-pub type Result<T> = std::result::Result<T, ChatError>;
+pub type ChatResult<T> = std::result::Result<T, ChatError>;

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 // TODO: did not use mpsc since we need to broadcast msgs to all chatroom subscriber
 use tokio::sync::broadcast;
-use crate::error::{ChatError, Result};
+use crate::error::{ChatError, ChatResult};
 use crate::message::ChatMessage;
 
 pub struct ChatRoom {
@@ -26,7 +26,7 @@ impl ChatRoom {
         self.users.insert(name, self.tx.clone());
     }
 
-    pub async fn broadcast(&self, message: ChatMessage) -> Result<()> {
+    pub async fn broadcast(&self, message: ChatMessage) -> ChatResult<()> {
         self.tx
             .send(message.clone())
             .map_err(|_| ChatError::SendError)?;
