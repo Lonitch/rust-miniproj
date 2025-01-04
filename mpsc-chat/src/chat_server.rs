@@ -1,7 +1,7 @@
-use std::collections::HashMap;
 use crate::chat_room::ChatRoom;
 use crate::error::{ChatError, ChatResult};
 use crate::message::ChatMessage;
+use std::collections::HashMap;
 
 pub struct ChatServer {
     rooms: HashMap<String, ChatRoom>,
@@ -20,15 +20,15 @@ impl ChatServer {
         }
         let chat_room = ChatRoom::new().await;
 
-    // subscribe only once for logging
-    let mut broadcast_rx = chat_room.subscribe();
-    let n = name.clone();
-    tokio::spawn(async move {
-        while let Ok(message) = broadcast_rx.recv().await {
-            // Log in one place only
-            println!("<Room: {}> {}", &n, message);
-        }
-    });
+        // subscribe only once for logging
+        let mut broadcast_rx = chat_room.subscribe();
+        let n = name.clone();
+        tokio::spawn(async move {
+            while let Ok(message) = broadcast_rx.recv().await {
+                // Log in one place only
+                println!("<Room: {}> {}", &n, message);
+            }
+        });
 
         self.rooms.insert(name, chat_room);
         Ok(())
@@ -46,7 +46,7 @@ impl ChatServer {
     }
 
     // joining means that you're listening to the chatroom.
-    // I suspect this function is the source cause of printing 
+    // I suspect this function is the source cause of printing
     // duplicated message
     pub async fn join_room(&mut self, room: &str, user: String) -> ChatResult<()> {
         let chat_room = self.rooms.get_mut(room).ok_or(ChatError::RoomNotFound)?;

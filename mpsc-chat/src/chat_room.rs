@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 // TODO: did not use mpsc since we need to broadcast msgs to all chatroom subscriber
-use tokio::sync::broadcast;
 use crate::error::{ChatError, ChatResult};
 use crate::message::ChatMessage;
+use tokio::sync::broadcast;
 
 pub struct ChatRoom {
     users: HashMap<String, broadcast::Sender<ChatMessage>>,

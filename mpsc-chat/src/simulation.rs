@@ -53,7 +53,6 @@ async fn manage_rooms(
             0..=3 => {
                 // CREATE ROOM
                 let room = random_room_name();
-                // TODO: why not wrap this lock with {} ?
                 let mut srv = server.lock().await;
                 let result = srv.create_room(room.clone()).await;
                 drop(srv);
@@ -81,8 +80,7 @@ async fn manage_rooms(
             }
             _ => {
                 // REMOVE ROOM
-                // TODO: why not wrap this lock with {} ?
-                let existing_rooms =  rooms.lock().await.clone();
+                let existing_rooms = rooms.lock().await.clone();
                 if !existing_rooms.is_empty() {
                     let chosen_room = {
                         let mut rng = rand::thread_rng();
@@ -103,11 +101,16 @@ async fn manage_rooms(
                         }
                     }
 
-                    // TODO: why NOT wrap this?
                     let mut srv2 = server.lock().await;
                     match srv2.remove_room(&chosen_room).await {
                         Ok(_) => {
                             println!("[LOG]: Removed room '{}'", chosen_room);
+
+                            // RULE OF THUMB FOR WRAPPING MUTEX LOCK:
+                            // whenever you have multiple "obj.lock().await"
+                            // in the same scope and returned objects require
+                            // the same resource to do things, you need {}
+
                             {
                                 let mut lock_rooms = rooms.lock().await;
                                 lock_rooms.retain(|r| r != &chosen_room);
@@ -157,7 +160,10 @@ async fn manage_users(
                     drop(srv);
 
                     if let Err(e) = result {
-                        eprintln!("[ERROR]: Adding '{}' to '{}': {:?}", new_user, chosen_room, e);
+                        eprintln!(
+                            "[ERROR]: Adding '{}' to '{}': {:?}",
+                            new_user, chosen_room, e
+                        );
                     } else {
                         println!("[LOG]: User '{}' joined room '{}'", new_user, chosen_room);
                         users_in_room
@@ -194,7 +200,10 @@ async fn manage_users(
                                     removed_user, chosen_room, e
                                 );
                             } else {
-                                println!("[LOG]: User '{}' left room '{}'", removed_user, chosen_room);
+                                println!(
+                                    "[LOG]: User '{}' left room '{}'",
+                                    removed_user, chosen_room
+                                );
                             }
                         }
                     }
@@ -256,7 +265,10 @@ async fn manage_bot_interactions(
                     let srv = server.lock().await;
                     let _ = srv.send_message(&chosen_room, call).await;
                 }
-                println!("[LOG]: Bot '{}' in '{}' called user '{}'", bot_name, chosen_room, user);
+                println!(
+                    "[LOG]: Bot '{}' in '{}' called user '{}'",
+                    bot_name, chosen_room, user
+                );
 
                 // user reply
                 let reply = ChatMessage {
