@@ -66,16 +66,16 @@ async fn manage_rooms(
                         let bot_name = format!("{}-bot", &room);
                         let mut srv2 = server.lock().await;
                         if let Err(e) = srv2.join_room(&room, bot_name.clone()).await {
-                            eprintln!("Error adding bot '{}' to '{}': {:?}", bot_name, room, e);
+                            eprintln!("[ERROR]: adding bot '{}' to '{}': {:?}", bot_name, room, e);
                         } else {
-                            println!("Created room '{}' + bot '{}'", room, bot_name);
+                            println!("[LOG]: Created room '{}' + bot '{}'", room, bot_name);
                         }
                     }
                     Err(ChatError::RoomExists) => {
-                        println!("Room '{}' already exists!", room);
+                        println!("[ERROR]: Room '{}' already exists!", room);
                     }
                     Err(e) => {
-                        eprintln!("Error creating room '{}': {:?}", room, e);
+                        eprintln!("[ERROR]: creating room '{}': {:?}", room, e);
                     }
                 }
             }
@@ -107,7 +107,7 @@ async fn manage_rooms(
                     let mut srv2 = server.lock().await;
                     match srv2.remove_room(&chosen_room).await {
                         Ok(_) => {
-                            println!("Removed room '{}'", chosen_room);
+                            println!("[LOG]: Removed room '{}'", chosen_room);
                             {
                                 let mut lock_rooms = rooms.lock().await;
                                 lock_rooms.retain(|r| r != &chosen_room);
@@ -115,10 +115,10 @@ async fn manage_rooms(
                             users_in_room.lock().await.remove(&chosen_room);
                         }
                         Err(ChatError::RoomNotEmpty) => {
-                            println!("Room '{}' not empty, cannot remove", chosen_room);
+                            println!("[ERROR]: Room '{}' not empty, cannot remove", chosen_room);
                         }
                         Err(e) => {
-                            eprintln!("Error removing room '{}': {:?}", chosen_room, e);
+                            eprintln!("[ERROR]: removing room '{}': {:?}", chosen_room, e);
                         }
                     }
                 }
@@ -157,9 +157,9 @@ async fn manage_users(
                     drop(srv);
 
                     if let Err(e) = result {
-                        eprintln!("Error adding '{}' to '{}': {:?}", new_user, chosen_room, e);
+                        eprintln!("[ERROR]: Adding '{}' to '{}': {:?}", new_user, chosen_room, e);
                     } else {
-                        println!("User '{}' joined room '{}'", new_user, chosen_room);
+                        println!("[LOG]: User '{}' joined room '{}'", new_user, chosen_room);
                         users_in_room
                             .lock()
                             .await
@@ -190,11 +190,11 @@ async fn manage_users(
                             let mut srv = server.lock().await;
                             if let Err(e) = srv.leave_room(&chosen_room, &removed_user).await {
                                 eprintln!(
-                                    "Error removing '{}' from '{}': {:?}",
+                                    "[ERROR]: removing '{}' from '{}': {:?}",
                                     removed_user, chosen_room, e
                                 );
                             } else {
-                                println!("User '{}' left room '{}'", removed_user, chosen_room);
+                                println!("[LOG]: User '{}' left room '{}'", removed_user, chosen_room);
                             }
                         }
                     }
@@ -256,7 +256,7 @@ async fn manage_bot_interactions(
                     let srv = server.lock().await;
                     let _ = srv.send_message(&chosen_room, call).await;
                 }
-                println!("Bot '{}' in '{}' called user '{}'", bot_name, chosen_room, user);
+                println!("[LOG]: Bot '{}' in '{}' called user '{}'", bot_name, chosen_room, user);
 
                 // user reply
                 let reply = ChatMessage {
@@ -269,7 +269,7 @@ async fn manage_bot_interactions(
                     let srv = server.lock().await;
                     let _ = srv.send_message(&chosen_room, reply).await;
                 }
-                println!("User '{}' replied in '{}'", user, chosen_room);
+                println!("[LOG]: User '{}' replied in '{}'", user, chosen_room);
             }
         }
 
@@ -308,5 +308,5 @@ pub async fn run_simulation(duration: Duration) {
 
     // Run for specified duration then exit
     sleep(duration).await;
-    println!("Done with random simulation. Exiting.");
+    println!("[LOG]: Done with random simulation. Exiting.");
 }
