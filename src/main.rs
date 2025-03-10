@@ -9,9 +9,15 @@ fn main() {
     print!("$ ");
     io::stdout().flush().unwrap();
     stdin.read_line(&mut input).unwrap();
-    println!("{}: command not found", input.trim());
-    println!("$ exit 0");
-    std::process::exit(0);
-    // input.clear();
+    if input.contains("exit") {
+      let res = input.split(' ').last().unwrap();
+      match res.trim().parse::<i32>() {
+        Ok(num) => std::process::exit(num),
+        Err(_) => println!("Invalid exit command"),
+      }
+    } else {
+      println!("{}: command not found", input.trim());
+    }
+    input.clear();
   }
 }
