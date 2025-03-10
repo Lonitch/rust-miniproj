@@ -10,6 +10,7 @@ fn main() {
     io::stdout().flush().unwrap();
     stdin.read_line(&mut input).unwrap();
     println!("{}: command not found", input.trim());
-    input.clear();
+    std::process::exit(0);
+    // input.clear();
   }
 }
