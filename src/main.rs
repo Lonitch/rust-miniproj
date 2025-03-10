@@ -31,7 +31,22 @@ fn main() {
         if cmd_headers.contains(&second) {
           println!("{second} is a shell builtin");
         } else {
-          println!("{second}: not found");
+          if let Ok(path) = std::env::var("PATH") {
+            let mut cmd_exist = false;
+            for dir in path.split(':') {
+              let p = std::path::Path::new(dir).join(second);
+              if p.exists() {
+                println!("{second} is {}", p.to_str().unwrap());
+                cmd_exist = true;
+                break;
+              }
+            }
+            if !cmd_exist {
+              println!("{second}: not found");
+            }
+          } else {
+            println!("{second}: not found");
+          }
         }
       },
       _ => {
