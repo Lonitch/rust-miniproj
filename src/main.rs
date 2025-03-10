@@ -1,7 +1,8 @@
 #[allow(unused_imports)]
 use std::io::{self, Write};
+mod utils;
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
   let cmd_headers = ["echo", "type", "exit"];
   // Wait for user input
   let stdin = io::stdin();
@@ -10,7 +11,7 @@ fn main() {
     print!("$ ");
     io::stdout().flush().unwrap();
     stdin.read_line(&mut input).unwrap();
-    let cmd = input.split(' ').collect::<Vec<&str>>();
+    let cmd = input.split_whitespace().collect::<Vec<&str>>();
 
     match *cmd.first().unwrap() {
       "exit" => {
@@ -49,8 +50,12 @@ fn main() {
           }
         }
       },
-      _ => {
-        println!("{}: command not found", input.trim());
+      x => {
+        if utils::command_exists(x) {
+          utils::cmd_exec(cmd)?
+        } else {
+          println!("{}: command not found", input.trim());
+        }
       },
     }
     input.clear();
