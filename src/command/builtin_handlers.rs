@@ -95,7 +95,10 @@ fn parse_quoted_string(input: &str) -> String {
     // Remove the quotes
     input[1..input.len() - 1].to_string()
   } else {
-    input.to_string()
+    input
+      .split_whitespace()
+      .collect::<Vec<&str>>()
+      .join(" ")
   }
 }
 
