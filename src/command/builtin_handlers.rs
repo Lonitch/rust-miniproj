@@ -32,9 +32,17 @@ pub fn handle_exit(cmd: &Vec<&str>) {
   }
 }
 
-pub fn handle_echo(cmd: &Vec<&str>) {
-  let msg = &cmd[1..].join(" ");
-  println!("{}", msg);
+pub fn handle_echo(
+  cmd: &Vec<&str>,
+  input: &String,
+) {
+  let last = input.split("echo").last().unwrap_or("").trim();
+  if last.starts_with('\'') && last.ends_with('\'') {
+    println!("{}", &last[1..last.len() - 1]);
+  } else {
+    let msg = &cmd[1..].join(" ");
+    println!("{}", msg);
+  }
 }
 
 pub fn handle_pwd() {
