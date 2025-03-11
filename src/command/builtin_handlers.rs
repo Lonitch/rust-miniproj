@@ -36,6 +36,7 @@ pub fn handle_exit(cmd: &Vec<&str>) {
 }
 
 pub fn handle_echo(input: &str) -> Result<(), std::io::Error> {
+  // Trim "echo" from the beginning
   let input = input.trim_start_matches("echo").trim();
 
   // Parse the -n flag
@@ -45,21 +46,23 @@ pub fn handle_echo(input: &str) -> Result<(), std::io::Error> {
     (false, input)
   };
 
-  // Find redirection operator outside quotes
-  let mut parts = split_on_unquoted(content, '>');
-  let message = parts.remove(0).trim();
-  let file_path = parts.first().map(|s| s.trim());
+  // Check if there's a redirection
+  let parts = split_on_unquoted(content, '>');
+  let message_part = parts[0].trim();
+  let file_path = if parts.len() > 1 { parts[1].trim() } else { "" };
 
-  // Parse the message (handle quotes)
-  let message = parse_quoted_string(message);
+  // Process the message string by removing quotes
+  let message = process_quoted_string(message_part);
 
-  // Handle redirection
-  if let Some(file_path) = file_path {
-    let file_path = parse_quoted_string(file_path);
+  // Check if we need to redirect output
+  if !file_path.is_empty() {
+    let clean_path = process_quoted_string(file_path);
 
     // Ensure parent directory exists
-    if let Some(parent) = Path::new(&file_path).parent() {
-      std::fs::create_dir_all(parent)?;
+    if let Some(parent) = Path::new(&clean_path).parent() {
+      if !parent.exists() {
+        std::fs::create_dir_all(parent)?;
+      }
     }
 
     // Open file and write content
@@ -67,7 +70,7 @@ pub fn handle_echo(input: &str) -> Result<(), std::io::Error> {
       .write(true)
       .create(true)
       .truncate(true)
-      .open(&file_path)?;
+      .open(&clean_path)?;
 
     if no_newline {
       write!(file, "{}", message)?;
@@ -87,21 +90,34 @@ pub fn handle_echo(input: &str) -> Result<(), std::io::Error> {
   Ok(())
 }
 
-// Helper function to parse quoted strings
-fn parse_quoted_string(input: &str) -> String {
-  let input = input.trim();
+// Helper function to process quoted strings - removes all quotes
+fn process_quoted_string(s: &str) -> String {
+  // This implementation handles both quoted and unquoted strings
+  let s = s.trim();
 
-  if (input.starts_with('"') && input.ends_with('"')) || (input.starts_with('\'') && input.ends_with('\'')) {
-    // Remove the quotes
-    input[1..input.len() - 1]
-      .replace('\'', "")
-      .to_string()
-  } else {
-    input
-      .split_whitespace()
-      .collect::<Vec<&str>>()
-      .join(" ")
+  let mut result = String::new();
+  let mut in_quotes = false;
+  let mut quote_char = '\0';
+
+  for c in s.chars() {
+    match c {
+      '\'' | '"' => {
+        // Toggle quote state but don't add quote to output
+        if !in_quotes {
+          in_quotes = true;
+          quote_char = c;
+        } else if c == quote_char {
+          in_quotes = false;
+        } else {
+          // This is a different quote character than what started the quoted section
+          result.push(c);
+        }
+      },
+      _ => result.push(c),
+    }
   }
+
+  result
 }
 
 // Helper function to split on unquoted delimiters
@@ -121,12 +137,20 @@ fn split_on_unquoted(
       c if c == delimiter && !in_single_quotes && !in_double_quotes => {
         result.push(&s[start..i]);
         start = i + 1;
+        break; // Only split on the first unquoted delimiter
       },
       _ => {},
     }
   }
 
-  result.push(&s[start..]);
+  // Add the rest of the string (everything after the delimiter)
+  if start < s.len() {
+    result.push(&s[start..]);
+  } else if result.is_empty() {
+    // No delimiter found, add the whole string
+    result.push(s);
+  }
+
   result
 }
 
