@@ -52,7 +52,14 @@ pub fn handle_echo(input: &str) -> Result<(), std::io::Error> {
   let file_path = if parts.len() > 1 { parts[1].trim() } else { "" };
 
   // Process the message string by removing quotes
-  let message = process_quoted_string(message_part);
+  let message = if has_quotes(message_part) {
+    process_quoted_string(message_part)
+  } else {
+    message_part
+      .split_whitespace()
+      .collect::<Vec<&str>>()
+      .join(" ")
+  };
 
   // Check if we need to redirect output
   if !file_path.is_empty() {
@@ -90,6 +97,10 @@ pub fn handle_echo(input: &str) -> Result<(), std::io::Error> {
   Ok(())
 }
 
+fn has_quotes(s: &str) -> bool {
+  s.contains('\'') || s.contains('"')
+}
+
 // Helper function to process quoted strings - removes all quotes
 fn process_quoted_string(s: &str) -> String {
   // This implementation handles both quoted and unquoted strings
@@ -102,14 +113,12 @@ fn process_quoted_string(s: &str) -> String {
   for c in s.chars() {
     match c {
       '\'' | '"' => {
-        // Toggle quote state but don't add quote to output
         if !in_quotes {
           in_quotes = true;
           quote_char = c;
         } else if c == quote_char {
           in_quotes = false;
         } else {
-          // This is a different quote character than what started the quoted section
           result.push(c);
         }
       },
