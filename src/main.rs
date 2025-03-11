@@ -2,6 +2,26 @@
 use std::io::{self, Write};
 mod utils;
 
+enum Command {
+  Pwd,
+  Echo,
+  Exit,
+  Type,
+  Unknown(String),
+}
+
+impl From<&str> for Command {
+  fn from(s: &str) -> Self {
+    match s {
+      "echo" => Command::Echo,
+      "exit" => Command::Exit,
+      "pwd" => Command::Pwd,
+      "type" => Command::Type,
+      other => Command::Unknown(other.to_string()),
+    }
+  }
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
   let cmd_headers = ["echo", "type", "exit"];
   // Wait for user input
@@ -12,9 +32,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     io::stdout().flush().unwrap();
     stdin.read_line(&mut input).unwrap();
     let cmd = input.split_whitespace().collect::<Vec<&str>>();
+    let exec = Command::from(*cmd.first().unwrap());
 
-    match *cmd.first().unwrap() {
-      "exit" => {
+    match exec {
+      Command::Exit => {
         let res = cmd.last().unwrap();
         match res.trim().parse::<i32>() {
           Ok(num) => std::process::exit(num),
@@ -22,12 +43,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
       },
 
-      "echo" => {
+      Command::Echo => {
         let msg = input.split("echo").last().unwrap().trim();
         println!("{}", msg);
       },
 
-      "type" => {
+      Command::Pwd => match std::env::current_dir() {
+        Ok(path) => println!("{}", path.display()),
+        _ => {},
+      },
+
+      Command::Type => {
         let second = cmd.last().unwrap().trim();
         if cmd_headers.contains(&second) {
           println!("{second} is a shell builtin");
@@ -50,8 +76,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
           }
         }
       },
-      x => {
-        if utils::command_exists(x) {
+      Command::Unknown(x) => {
+        if utils::command_exists(x.as_str()) {
           utils::cmd_exec(cmd)?
         } else {
           println!("{}: command not found", input.trim());
