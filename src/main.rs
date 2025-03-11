@@ -22,8 +22,15 @@ impl From<&str> for Command {
   }
 }
 
+impl Command {
+  fn is_builtin(s: &str) -> bool {
+    match Command::from(s) {
+      Command::Unknown(_) => false,
+      _ => true,
+    }
+  }
+}
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-  let cmd_headers = ["echo", "type", "exit"];
   // Wait for user input
   let stdin = io::stdin();
   let mut input = String::new();
@@ -55,7 +62,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
       Command::Type => {
         let second = cmd.last().unwrap().trim();
-        if cmd_headers.contains(&second) {
+        if Command::is_builtin(second) {
           println!("{second} is a shell builtin");
         } else {
           if let Ok(path) = std::env::var("PATH") {
