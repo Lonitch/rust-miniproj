@@ -38,7 +38,7 @@ pub fn handle_echo(
 ) {
   let last = input.split("echo").last().unwrap_or("").trim();
   if last.starts_with('\'') && last.ends_with('\'') {
-    println!("{}", &last[1..last.len() - 1]);
+    println!("{}", &last[1..last.len() - 1].replace('\'', ""));
   } else {
     let msg = &cmd[1..].join(" ");
     println!("{}", msg);
