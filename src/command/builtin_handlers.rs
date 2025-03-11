@@ -93,7 +93,9 @@ fn parse_quoted_string(input: &str) -> String {
 
   if (input.starts_with('"') && input.ends_with('"')) || (input.starts_with('\'') && input.ends_with('\'')) {
     // Remove the quotes
-    input[1..input.len() - 1].to_string()
+    input[1..input.len() - 1]
+      .replace('\'', "")
+      .to_string()
   } else {
     input
       .split_whitespace()
