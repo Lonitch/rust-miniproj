@@ -13,8 +13,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     print!("$ ");
     io::stdout().flush().unwrap();
     stdin.read_line(&mut input).unwrap();
-    let cmd = input.split_whitespace().collect::<Vec<&str>>();
-    let exec = Command::from(*cmd.first().unwrap());
+    let cmd = utils::parse_args(&input);
+    println!("{:?}", cmd.first().unwrap());
+    let exec = if let Some(cmd_name) = cmd.first() {
+      Command::from(cmd_name.clone())
+    } else {
+      Command::Unknown("".to_string())
+    };
 
     match exec {
       Command::Cd => command::handle_cd(&cmd),
@@ -24,7 +29,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
       Command::Type => command::handle_type(&cmd),
       Command::Unknown(x) => {
         if utils::command_exists(x.as_str()) {
-          utils::cmd_exec(cmd)?
+          utils::cmd_exec(&cmd)?
         } else {
           println!("{}: command not found", input.trim());
         }

@@ -3,7 +3,7 @@ use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::Path;
 
-pub fn handle_cd(cmd: &Vec<&str>) {
+pub fn handle_cd(cmd: &Vec<String>) {
   let dir = cmd.get(1).map_or("", |s| s.trim());
   let path = if dir.starts_with("~") {
     if let Ok(home) = std::env::var("HOME") {
@@ -27,7 +27,7 @@ pub fn handle_cd(cmd: &Vec<&str>) {
   }
 }
 
-pub fn handle_exit(cmd: &Vec<&str>) {
+pub fn handle_exit(cmd: &Vec<String>) {
   let res = cmd.last().unwrap();
   match res.trim().parse::<i32>() {
     Ok(num) => std::process::exit(num),
@@ -170,7 +170,7 @@ pub fn handle_pwd() {
   }
 }
 
-pub fn handle_type(cmd: &Vec<&str>) {
+pub fn handle_type(cmd: &Vec<String>) {
   let second = cmd.last().unwrap().trim();
   if Command::is_builtin(second) {
     println!("{second} is a shell builtin");

@@ -11,9 +11,9 @@ pub enum Command {
   Unknown(String),
 }
 
-impl From<&str> for Command {
-  fn from(s: &str) -> Self {
-    match s {
+impl From<String> for Command {
+  fn from(s: String) -> Self {
+    match s.as_str() {
       "cd" => Command::Cd,
       "echo" => Command::Echo,
       "exit" => Command::Exit,
@@ -26,7 +26,7 @@ impl From<&str> for Command {
 
 impl Command {
   pub fn is_builtin(s: &str) -> bool {
-    match Command::from(s) {
+    match Command::from(s.to_string()) {
       Command::Unknown(_) => false,
       _ => true,
     }
