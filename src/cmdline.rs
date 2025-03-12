@@ -1,4 +1,7 @@
-use crate::Executable;
+mod builtin_handlers;
+mod executable;
+use builtin_handlers::*;
+use executable::Executable;
 use std::io::{BufRead, BufReader};
 use std::process::{Command, Stdio};
 
@@ -50,8 +53,19 @@ impl Cmdline {
       stdin_redirect: None,
     }
   }
+  pub fn handle_execs(&self) -> Result<(), Box<dyn std::error::Error>> {
+    match self.exec {
+      Executable::Cd => handle_cd(&self.args),
+      Executable::Exit => handle_exit(&self.args),
+      Executable::Echo => handle_echo(&self.args)?,
+      Executable::Pwd => handle_pwd(),
+      Executable::Type => handle_type(&self.args),
+      Executable::Unknown(_) => self.cmd_exec()?,
+    }
+    Ok(())
+  }
 
-  pub fn parse_args(input: &str) -> Vec<String> {
+  fn parse_args(input: &str) -> Vec<String> {
     let mut args = Vec::new();
     let mut current_arg = String::new();
     let mut in_single_quotes = false;
@@ -120,33 +134,46 @@ impl Cmdline {
     args
   }
 
-  pub fn executable_exists(command: &str) -> bool {
-    if let Ok(path) = std::env::var("PATH") {
-      for dir in path.split(':') {
-        let path = std::path::Path::new(dir).join(command.trim());
-        if path.exists() {
-          return true;
+  fn executable_exists(&self) -> bool {
+    match &self.exec {
+      Executable::Unknown(x) => {
+        if let Ok(path) = std::env::var("PATH") {
+          for dir in path.split(':') {
+            let path = std::path::Path::new(dir).join(x.trim());
+            if path.exists() {
+              return true;
+            }
+          }
         }
-      }
+        println!("{}: executable not found", x.trim());
+        return false;
+      },
+      _ => true,
     }
-    false
   }
 
-  pub fn cmd_exec(cmd: &Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
-    if let Some((prog, args)) = cmd.split_first() {
-      let mut child = Command::new(prog)
-        .args(args)
-        .stdout(Stdio::piped())
-        .spawn()?;
+  pub fn cmd_exec(&self) -> Result<(), Box<dyn std::error::Error>> {
+    if let Some((prog, args)) = self.args.split_first() {
+      match Executable::from(prog.clone()) {
+        Executable::Unknown(_) => {
+          if self.executable_exists() {
+            let mut child = Command::new(prog)
+              .args(args)
+              .stdout(Stdio::piped())
+              .spawn()?;
 
-      if let Some(stdout) = child.stdout.take() {
-        let reader = BufReader::new(stdout);
-        for line in reader.lines() {
-          println!("{}", line?);
-        }
+            if let Some(stdout) = child.stdout.take() {
+              let reader = BufReader::new(stdout);
+              for line in reader.lines() {
+                println!("{}", line?);
+              }
+            }
+
+            child.wait()?;
+          }
+        },
+        _ => (),
       }
-
-      child.wait()?;
     }
     Ok(())
   }

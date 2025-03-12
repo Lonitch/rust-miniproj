@@ -1,4 +1,4 @@
-use super::Executable;
+use super::executable::Executable;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::Path;
@@ -35,7 +35,7 @@ pub fn handle_exit(cmd: &Vec<String>) {
   }
 }
 
-pub fn handle_echo(args: &Vec<String>) -> Result<(), std::io::Error> {
+pub fn handle_echo(args: &Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
   // Check for -n flag
   let mut no_newline = false;
   let mut arg_index = 1;
@@ -50,7 +50,7 @@ pub fn handle_echo(args: &Vec<String>) -> Result<(), std::io::Error> {
   // Process arguments to find redirection
   let mut i = arg_index;
   while i < args.len() {
-    if args[i] == ">" && i + 1 < args.len() {
+    if (args[i] == ">" || args[i] == "1>") && i + 1 < args.len() {
       // Found redirection
       output_target = Some(args[i + 1].clone());
       break;

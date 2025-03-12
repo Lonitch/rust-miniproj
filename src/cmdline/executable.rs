@@ -1,7 +1,3 @@
-mod builtin_handlers;
-
-pub use builtin_handlers::*;
-
 pub enum Executable {
   Cd,
   Echo,
