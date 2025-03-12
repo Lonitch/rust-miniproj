@@ -10,15 +10,28 @@ pub fn parse_args(input: &str) -> Vec<String> {
 
   for c in input.chars() {
     if escaped {
-      // Handle escaped character
-      current_arg.push(c);
+      if in_double_quotes {
+        if c == '$' || c == '`' || c == '"' || c == '\\' || c == '\n' {
+          current_arg.push(c);
+        } else {
+          current_arg.push('\\');
+          current_arg.push(c);
+        }
+      } else if in_single_quotes {
+        // Inside single quotes, backslash has no special meaning
+        current_arg.push('\\');
+        current_arg.push(c);
+      } else if c == '\n' {
+        // Line continuation outside quotes
+        // Skip both the backslash and newline
+      } else {
+        // Outside quotes, backslash escapes any character
+        current_arg.push(c);
+      }
       escaped = false;
     } else if c == '\\' {
-      // Escape the next character
+      // Potential escape sequence
       escaped = true;
-      if in_double_quotes || in_single_quotes {
-        current_arg.push('\\');
-      }
     } else if c == '\'' && !in_double_quotes {
       // Toggle single quotes
       in_single_quotes = !in_single_quotes;
@@ -36,10 +49,20 @@ pub fn parse_args(input: &str) -> Vec<String> {
     }
   }
 
+  // Handle any trailing escape character
   if escaped {
-    current_arg.push('\\');
+    if !in_single_quotes && !in_double_quotes {
+      current_arg.push('\\');
+    } else if in_single_quotes {
+      current_arg.push('\\');
+    }
+    // In double quotes, a trailing backslash is just a backslash
+    if in_double_quotes {
+      current_arg.push('\\');
+    }
   }
 
+  // Add the last argument if not empty
   if !current_arg.is_empty() {
     args.push(current_arg);
   }
