@@ -1,4 +1,5 @@
 use super::executable::Executable;
+use super::{Cmd, RedirectMode};
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::Path;
@@ -35,51 +36,55 @@ pub fn handle_exit(cmd: &Vec<String>) {
   }
 }
 
-pub fn handle_echo(args: &Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
+pub fn handle_echo(cmd: &Cmd) -> Result<(), Box<dyn std::error::Error>> {
   // Check for -n flag
   let mut no_newline = false;
   let mut arg_index = 1;
   let mut output_message = String::new();
-  let mut output_target = None;
 
-  if args.len() > 1 && args[1] == "-n" {
+  if cmd.args.len() > 1 && cmd.args[1] == "-n" {
     no_newline = true;
     arg_index = 2;
   }
 
   // Process arguments to find redirection
   let mut i = arg_index;
-  while i < args.len() {
-    if (args[i] == ">" || args[i] == "1>") && i + 1 < args.len() {
-      // Found redirection
-      output_target = Some(args[i + 1].clone());
+  while i < cmd.args.len() {
+    if (cmd.args[i] == ">"
+      || cmd.args[i] == ">>"
+      || cmd.args[i] == "1>"
+      || cmd.args[i] == "1>>"
+      || cmd.args[i] == "2>"
+      || cmd.args[i] == "2>>"
+      || cmd.args[i] == "<"
+      || cmd.args[i] == ">|")
+      && i + 1 < cmd.args.len()
+    {
+      i += 2;
       break;
     }
 
-    // Add to message with space if not first argument
-    if i > arg_index {
+    if i > arg_index && output_message.len() > 0 {
       output_message.push(' ');
     }
-    output_message.push_str(&args[i]);
-
+    output_message.push_str(&cmd.args[i]);
     i += 1;
   }
 
-  // Handle output based on redirection
-  if let Some(file_path) = output_target {
-    // Ensure parent directory exists
-    if let Some(parent) = std::path::Path::new(&file_path).parent() {
-      if !parent.exists() {
-        std::fs::create_dir_all(parent)?;
-      }
-    }
-
-    // Open file and write content
-    let mut file = std::fs::OpenOptions::new()
-      .write(true)
-      .create(true)
-      .truncate(true)
-      .open(file_path)?;
+  if let Some(redirect) = &cmd.stdout_redirect {
+    let mut file = match redirect.mode {
+      RedirectMode::Write | RedirectMode::ForceWrite => OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(&redirect.path)?,
+      RedirectMode::Append => OpenOptions::new()
+        .write(true)
+        .create(true)
+        .append(true)
+        .open(&redirect.path)?,
+      _ => return Err("Invalid redirection mode for stdout".into()),
+    };
 
     if no_newline {
       write!(file, "{}", output_message)?;
