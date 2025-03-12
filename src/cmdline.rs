@@ -224,7 +224,7 @@ impl Cmd {
                         }
                     }
                 }
-                println!("{}: executable not found", x.trim());
+                println!("{}: command not found", x.trim());
                 false
             }
             _ => true,
