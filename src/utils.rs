@@ -16,6 +16,9 @@ pub fn parse_args(input: &str) -> Vec<String> {
     } else if c == '\\' {
       // Escape the next character
       escaped = true;
+      if in_double_quotes || in_single_quotes {
+        current_arg.push('\\');
+      }
     } else if c == '\'' && !in_double_quotes {
       // Toggle single quotes
       in_single_quotes = !in_single_quotes;
@@ -31,6 +34,10 @@ pub fn parse_args(input: &str) -> Vec<String> {
     } else {
       current_arg.push(c);
     }
+  }
+
+  if escaped {
+    current_arg.push('\\');
   }
 
   if !current_arg.is_empty() {
