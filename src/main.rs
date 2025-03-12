@@ -14,7 +14,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     io::stdout().flush().unwrap();
     stdin.read_line(&mut input).unwrap();
     let cmd = utils::parse_args(&input);
-    println!("{:?}", cmd.first().unwrap());
     let exec = if let Some(cmd_name) = cmd.first() {
       Command::from(cmd_name.clone())
     } else {
@@ -24,7 +23,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     match exec {
       Command::Cd => command::handle_cd(&cmd),
       Command::Exit => command::handle_exit(&cmd),
-      Command::Echo => command::handle_echo(&input)?,
+      Command::Echo => command::handle_echo(&cmd, &input)?,
       Command::Pwd => command::handle_pwd(),
       Command::Type => command::handle_type(&cmd),
       Command::Unknown(x) => {

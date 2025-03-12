@@ -1,4 +1,5 @@
 use super::Command;
+use crate::utils::parse_args;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::Path;
@@ -35,49 +36,52 @@ pub fn handle_exit(cmd: &Vec<String>) {
   }
 }
 
-pub fn handle_echo(input: &str) -> Result<(), std::io::Error> {
-  // Trim "echo" from the beginning
-  let input = input.trim_start_matches("echo").trim();
+pub fn handle_echo(
+  args: &Vec<String>,
+  input: &str,
+) -> Result<(), std::io::Error> {
+  // Check for -n flag
+  let mut no_newline = false;
+  let mut arg_index = 1;
 
-  // Parse the -n flag
-  let (no_newline, content) = if input.starts_with("-n") {
-    (true, input[2..].trim())
-  } else {
-    (false, input)
-  };
+  if args.len() > 0 && args[1] == "-n" {
+    no_newline = true;
+    arg_index = 2;
+  }
 
-  // Check if there's a redirection
-  let parts = split_on_unquoted(content, '>');
-  let message_part = parts[0].trim();
-  let file_path = if parts.len() > 1 { parts[1].trim() } else { "" };
+  // Build the message by joining the arguments
+  let message = args[arg_index..].join(" ");
 
-  // Process the message string by removing quotes
-  let message = if has_quotes(message_part) {
-    process_quoted_string(message_part)
-  } else {
-    message_part
-      .split_whitespace()
-      .collect::<Vec<&str>>()
-      .join(" ")
-  };
+  // Check for redirection
+  let redirection_index = input.find('>');
+  if let Some(idx) = redirection_index {
+    // Extract the file path from after the redirection
+    let file_path_part = &input[idx + 1..].trim();
 
-  // Check if we need to redirect output
-  if !file_path.is_empty() {
-    let clean_path = process_quoted_string(file_path);
+    // Use parse_args on just the file path part to handle quotes properly
+    let file_args = parse_args(file_path_part);
+    if file_args.is_empty() {
+      return Err(std::io::Error::new(
+        std::io::ErrorKind::InvalidInput,
+        "Missing file path after redirection",
+      ));
+    }
+
+    let file_path = &file_args[0];
 
     // Ensure parent directory exists
-    if let Some(parent) = Path::new(&clean_path).parent() {
+    if let Some(parent) = std::path::Path::new(&file_path).parent() {
       if !parent.exists() {
         std::fs::create_dir_all(parent)?;
       }
     }
 
     // Open file and write content
-    let mut file = OpenOptions::new()
+    let mut file = std::fs::OpenOptions::new()
       .write(true)
       .create(true)
       .truncate(true)
-      .open(&clean_path)?;
+      .open(file_path)?;
 
     if no_newline {
       write!(file, "{}", message)?;
@@ -95,72 +99,6 @@ pub fn handle_echo(input: &str) -> Result<(), std::io::Error> {
   }
 
   Ok(())
-}
-
-fn has_quotes(s: &str) -> bool {
-  s.contains('\'') || s.contains('"')
-}
-
-// Helper function to process quoted strings - removes all quotes
-fn process_quoted_string(s: &str) -> String {
-  // This implementation handles both quoted and unquoted strings
-  let s = s.trim();
-
-  let mut result = String::new();
-  let mut in_quotes = false;
-  let mut quote_char = '\0';
-
-  for c in s.chars() {
-    match c {
-      '\'' | '"' => {
-        if !in_quotes {
-          in_quotes = true;
-          quote_char = c;
-        } else if c == quote_char {
-          in_quotes = false;
-        } else {
-          result.push(c);
-        }
-      },
-      _ => result.push(c),
-    }
-  }
-
-  result
-}
-
-// Helper function to split on unquoted delimiters
-fn split_on_unquoted(
-  s: &str,
-  delimiter: char,
-) -> Vec<&str> {
-  let mut result = Vec::new();
-  let mut start = 0;
-  let mut in_single_quotes = false;
-  let mut in_double_quotes = false;
-
-  for (i, c) in s.char_indices() {
-    match c {
-      '\'' if !in_double_quotes => in_single_quotes = !in_single_quotes,
-      '"' if !in_single_quotes => in_double_quotes = !in_double_quotes,
-      c if c == delimiter && !in_single_quotes && !in_double_quotes => {
-        result.push(&s[start..i]);
-        start = i + 1;
-        break; // Only split on the first unquoted delimiter
-      },
-      _ => {},
-    }
-  }
-
-  // Add the rest of the string (everything after the delimiter)
-  if start < s.len() {
-    result.push(&s[start..]);
-  } else if result.is_empty() {
-    // No delimiter found, add the whole string
-    result.push(s);
-  }
-
-  result
 }
 
 pub fn handle_pwd() {
