@@ -1,8 +1,9 @@
+mod cmdline;
 #[allow(unused_imports)]
-mod command;
-mod utils;
+mod executable;
 
-use command::Command;
+use cmdline::Cmdline;
+use executable::Executable;
 use std::io::{self, Write};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -13,24 +14,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     print!("$ ");
     io::stdout().flush().unwrap();
     stdin.read_line(&mut input).unwrap();
-    let cmd = utils::parse_args(&input);
-    let exec = if let Some(cmd_name) = cmd.first() {
-      Command::from(cmd_name.clone())
-    } else {
-      Command::Unknown("".to_string())
-    };
+    let cmdline = Cmdline::new(&input);
 
-    match exec {
-      Command::Cd => command::handle_cd(&cmd),
-      Command::Exit => command::handle_exit(&cmd),
-      Command::Echo => command::handle_echo(&cmd)?,
-      Command::Pwd => command::handle_pwd(),
-      Command::Type => command::handle_type(&cmd),
-      Command::Unknown(x) => {
-        if utils::command_exists(x.as_str()) {
-          utils::cmd_exec(&cmd)?
+    match cmdline.exec {
+      Executable::Cd => executable::handle_cd(&cmdline.args),
+      Executable::Exit => executable::handle_exit(&cmdline.args),
+      Executable::Echo => executable::handle_echo(&cmdline.args)?,
+      Executable::Pwd => executable::handle_pwd(),
+      Executable::Type => executable::handle_type(&cmdline.args),
+      Executable::Unknown(x) => {
+        if Cmdline::executable_exists(x.as_str()) {
+          Cmdline::cmd_exec(&cmdline.args)?
         } else {
-          println!("{}: command not found", input.trim());
+          println!("{}: executable not found", input.trim());
         }
       },
     }

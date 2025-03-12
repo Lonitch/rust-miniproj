@@ -1,5 +1,4 @@
-use super::Command;
-use crate::utils::parse_args;
+use super::Executable;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::Path;
@@ -109,7 +108,7 @@ pub fn handle_pwd() {
 
 pub fn handle_type(cmd: &Vec<String>) {
   let second = cmd.last().unwrap().trim();
-  if Command::is_builtin(second) {
+  if Executable::is_builtin(second) {
     println!("{second} is a shell builtin");
   } else {
     if let Ok(path) = std::env::var("PATH") {
