@@ -168,7 +168,7 @@ impl Cmd {
                     mode: RedirectMode::Write,
                 });
             }
-            if args[i] == ">>" && i + 1 < args.len() {
+            if (args[i] == ">>" || args[i] == "1>>") && i + 1 < args.len() {
                 output_target = Some(args[i + 1].clone());
                 stdout_redirect = Some(RedirectInfo {
                     fd: 1,
@@ -184,7 +184,7 @@ impl Cmd {
                     mode: RedirectMode::ForceWrite,
                 });
             }
-            if (args[i] == "2>") && i + 1 < args.len() {
+            if args[i] == "2>" && i + 1 < args.len() {
                 output_target = Some(args[i + 1].clone());
                 stderr_redirect = Some(RedirectInfo {
                     fd: 2,
