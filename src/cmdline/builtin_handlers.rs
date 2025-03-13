@@ -67,32 +67,43 @@ pub fn handle_echo(cmd: &Cmd) -> Result<(), Box<dyn std::error::Error>> {
         i += 1;
     }
 
-    if let Some(redirect) = &cmd.stdout_redirect {
-        let mut file = match redirect.mode {
-            RedirectMode::Write | RedirectMode::ForceWrite => OpenOptions::new()
-                .write(true)
-                .create(true)
-                .truncate(true)
-                .open(&redirect.path)?,
-            RedirectMode::Append => OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(&redirect.path)?,
-            _ => return Err("Invalid redirection mode for stdout".into()),
-        };
-
-        if no_newline {
-            write!(file, "{}", output_message)?;
-        } else {
-            writeln!(file, "{}", output_message)?;
+    match (&cmd.stdout_redirect, &cmd.stderr_redirect) {
+        (Some(redirect), None) | (None, Some(redirect)) => {
+            let mut file = match redirect.mode {
+                RedirectMode::Write | RedirectMode::ForceWrite => OpenOptions::new()
+                    .write(true)
+                    .create(true)
+                    .truncate(true)
+                    .open(&redirect.path)?,
+                RedirectMode::Append => OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(&redirect.path)?,
+                _ => return Err("Invalid redirection mode".into()),
+            };
+            if redirect.fd == 1 {
+                if no_newline {
+                    write!(file, "{}", output_message)?;
+                } else {
+                    writeln!(file, "{}", output_message)?;
+                }
+            } else {
+                if no_newline {
+                    print!("{}", output_message);
+                    std::io::stdout().flush()?;
+                } else {
+                    println!("{}", output_message);
+                }
+            }
         }
-    } else {
-        // No redirection, print to stdout
-        if no_newline {
-            print!("{}", output_message);
-            std::io::stdout().flush()?;
-        } else {
-            println!("{}", output_message);
+        _ => {
+            // No redirection, print to stdout
+            if no_newline {
+                print!("{}", output_message);
+                std::io::stdout().flush()?;
+            } else {
+                println!("{}", output_message);
+            }
         }
     }
 
