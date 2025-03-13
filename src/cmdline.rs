@@ -1,9 +1,10 @@
+#![allow(dead_code)]
+#![allow(unused_assignments)]
 mod builtin_handlers;
 mod executable;
 use builtin_handlers::*;
 use executable::Executable;
 use std::fs::{File, OpenOptions};
-use std::io::BufRead;
 use std::process::{Command, Stdio};
 
 pub struct Cmdline {
@@ -175,6 +176,14 @@ impl Cmd {
                     mode: RedirectMode::Append,
                 });
             }
+            if args[i] == ">|" && i + 1 < args.len() {
+                output_target = Some(args[i + 1].clone());
+                stdout_redirect = Some(RedirectInfo {
+                    fd: 1,
+                    path: args[i + 1].clone(),
+                    mode: RedirectMode::ForceWrite,
+                });
+            }
             if (args[i] == "2>") && i + 1 < args.len() {
                 output_target = Some(args[i + 1].clone());
                 stderr_redirect = Some(RedirectInfo {
@@ -302,7 +311,7 @@ impl Cmd {
                     }
 
                     // Execute command
-                    let status = command.status()?;
+                    command.status()?;
                 }
             }
         }
