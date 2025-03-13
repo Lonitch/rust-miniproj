@@ -27,4 +27,13 @@ impl Executable {
             _ => true,
         }
     }
+    pub fn get_builtin_str() -> Vec<String> {
+        vec![
+            "cd".to_string(),
+            "pwd".to_string(),
+            "type".to_string(),
+            "exit".to_string(),
+            "echo".to_string(),
+        ]
+    }
 }

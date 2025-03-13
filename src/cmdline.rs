@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 #![allow(unused_assignments)]
 mod builtin_handlers;
-mod executable;
+pub mod executable;
 use builtin_handlers::*;
 use executable::Executable;
 use std::fs::{File, OpenOptions};
