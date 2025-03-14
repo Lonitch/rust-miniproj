@@ -1,6 +1,9 @@
 use crate::cmdline::executable::Executable;
 use rustyline::completion::{Completer, Pair};
 use rustyline::history::{History, SearchDirection};
+use std::env;
+use std::fs;
+use std::path::Path;
 
 pub struct ShellCompleter {
     history: Option<Box<dyn History>>,
@@ -18,6 +21,49 @@ impl ShellCompleter {
     fn get_builtin_commands(&self) -> Vec<String> {
         Executable::get_builtin_str()
     }
+
+    fn get_executables_from_path(&self) -> Vec<String> {
+        let mut executables = Vec::new();
+        let path_var = match env::var("PATH") {
+            Ok(val) => val,
+            Err(_) => return executables,
+        };
+
+        for path in path_var.split(':') {
+            if let Ok(entries) = fs::read_dir(path) {
+                for entry in entries.filter_map(Result::ok) {
+                    let path = entry.path();
+                    if path.is_file() && self.is_executable(&path) {
+                        if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                            executables.push(name.to_string());
+                        }
+                    }
+                }
+            }
+        }
+
+        executables
+    }
+
+    fn is_executable(&self, path: &Path) -> bool {
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            if let Ok(metadata) = fs::metadata(path) {
+                return metadata.permissions().mode() & 0o111 != 0;
+            }
+        }
+
+        #[cfg(not(unix))]
+        {
+            if let Some(extension) = path.extension() {
+                let ext = extension.to_string_lossy().to_lowercase();
+                return ext == "exe" || ext == "bat" || ext == "cmd";
+            }
+        }
+
+        false
+    }
 }
 
 impl Completer for ShellCompleter {
@@ -32,17 +78,30 @@ impl Completer for ShellCompleter {
         let (word_start, word) = find_word_at_pos(line, pos);
         let words: Vec<&str> = line[..word_start].split_whitespace().collect();
 
-        // If we're at the first word, complete with built-in commands
+        // If we're at the first word, complete with built-in commands and executables from PATH
         if words.is_empty() {
+            let mut matches = Vec::new();
+
+            // Add builtin commands
             let builtin_commands = self.get_builtin_commands();
-            let matches: Vec<Pair> = builtin_commands
-                .iter()
-                .filter(|cmd| cmd.starts_with(word))
-                .map(|cmd| Pair {
+            for cmd in builtin_commands.iter().filter(|cmd| cmd.starts_with(word)) {
+                matches.push(Pair {
                     display: cmd.clone(),
                     replacement: format!("{} ", cmd),
-                })
-                .collect();
+                });
+            }
+
+            // Add executables from PATH
+            let path_executables = self.get_executables_from_path();
+            for cmd in path_executables.iter().filter(|cmd| cmd.starts_with(word)) {
+                // Skip if already added as a builtin
+                if !builtin_commands.contains(cmd) {
+                    matches.push(Pair {
+                        display: cmd.clone(),
+                        replacement: format!("{} ", cmd),
+                    });
+                }
+            }
 
             return Ok((word_start, matches));
         }
