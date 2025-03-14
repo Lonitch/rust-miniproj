@@ -117,8 +117,43 @@ impl Completer for ShellCompleter {
             // Sort matches alphabetically
             matches.sort_by(|a, b| a.display.cmp(&b.display));
 
-            // Custom TAB completion behavior
+            // When we have multiple matches, find the longest common prefix
             if matches.len() > 1 {
+                let display_values: Vec<&str> = matches.iter().map(|pair| pair.display.as_str()).collect();
+                if let Some(common_prefix) = find_longest_common_prefix(&display_values) {
+                    // If the common prefix is longer than what the user typed
+                    if common_prefix.len() > word.len() {
+                        // Check if the common prefix is a complete match for one of the options
+                        let is_complete_match = display_values.contains(&&common_prefix[..]);
+                        
+                        // Create match with appropriate replacement
+                        let new_match = Pair {
+                            display: common_prefix.clone(),
+                            replacement: if is_complete_match {
+                                // Complete match gets a space
+                                format!("{} ", common_prefix)
+                            } else {
+                                // Partial match doesn't get a space
+                                common_prefix.clone()
+                            },
+                        };
+                        
+                        // Reset tab count if it's a complete match
+                        if is_complete_match {
+                            LAST_WORD.with(|last_word_cell| {
+                                TAB_COUNT.with(|tab_count_cell| {
+                                    *last_word_cell.borrow_mut() = None;
+                                    *tab_count_cell.borrow_mut() = 0;
+                                });
+                            });
+                        }
+                        
+                        return Ok((word_start, vec![new_match]));
+                    }
+                }
+
+                // If we get here, we couldn't complete further with common prefix
+                // or we already completed to the longest common prefix
                 let mut should_reset = false;
                 let mut should_list = false;
 
@@ -270,4 +305,41 @@ fn find_word_at_pos(line: &str, pos: usize) -> (usize, &str) {
         .unwrap_or(line.len());
 
     (start, &line[start..end])
+}
+
+/// Finds the longest common prefix among a collection of strings.
+/// Returns None if the collection is empty.
+fn find_longest_common_prefix(strings: &[&str]) -> Option<String> {
+    if strings.is_empty() {
+        return None;
+    }
+    if strings.len() == 1 {
+        return Some(strings[0].to_string());
+    }
+
+    // Start with the first string as the initial prefix
+    let mut prefix = strings[0].to_string();
+
+    // Compare with each remaining string
+    for s in &strings[1..] {
+        // Find the common characters between current prefix and this string
+        let mut common_chars = Vec::new();
+        
+        for (a, b) in prefix.chars().zip(s.chars()) {
+            if a != b {
+                break;
+            }
+            common_chars.push(a);
+        }
+        
+        // Update prefix to the common part only
+        prefix = common_chars.into_iter().collect();
+        
+        // If no common prefix, exit early
+        if prefix.is_empty() {
+            return None;
+        }
+    }
+
+    Some(prefix)
 }
