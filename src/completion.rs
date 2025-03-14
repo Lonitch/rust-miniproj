@@ -1,9 +1,17 @@
 use crate::cmdline::executable::Executable;
 use rustyline::completion::{Completer, Pair};
 use rustyline::history::{History, SearchDirection};
+use std::cell::RefCell;
 use std::env;
 use std::fs;
+use std::io::{self, Write};
 use std::path::Path;
+
+// Global state for TAB completion
+thread_local! {
+    static LAST_WORD: RefCell<Option<String>> = RefCell::new(None);
+    static TAB_COUNT: RefCell<usize> = RefCell::new(0);
+}
 
 pub struct ShellCompleter {
     history: Option<Box<dyn History>>,
@@ -101,6 +109,83 @@ impl Completer for ShellCompleter {
                         replacement: format!("{} ", cmd),
                     });
                 }
+            }
+
+            // Custom TAB completion behavior
+            if matches.len() > 1 {
+                let mut should_reset = false;
+                let mut should_list = false;
+
+                LAST_WORD.with(|last_word_cell| {
+                    TAB_COUNT.with(|tab_count_cell| {
+                        let mut last_word = last_word_cell.borrow_mut();
+                        let mut tab_count = tab_count_cell.borrow_mut();
+
+                        // Check if this is a repeated TAB press for the same word
+                        if let Some(ref stored_word) = *last_word {
+                            if stored_word == word {
+                                *tab_count += 1;
+
+                                // First TAB press - ring the bell
+                                if *tab_count == 1 {
+                                    print!("\x07"); // Bell character
+                                    io::stdout().flush().unwrap_or(());
+                                    should_reset = false;
+                                }
+                                // Second TAB press - display all matches
+                                else if *tab_count == 2 {
+                                    should_list = true;
+                                    should_reset = true;
+                                }
+                            } else {
+                                // Different word, reset counter
+                                *last_word = Some(word.to_string());
+                                *tab_count = 1;
+                                print!("\x07"); // Bell character
+                                io::stdout().flush().unwrap_or(());
+                                should_reset = false;
+                            }
+                        } else {
+                            // First time seeing this word
+                            *last_word = Some(word.to_string());
+                            *tab_count = 1;
+                            print!("\x07"); // Bell character
+                            io::stdout().flush().unwrap_or(());
+                            should_reset = false;
+                        }
+                    });
+                });
+
+                if should_list {
+                    println!();
+                    let display_matches: Vec<String> =
+                        matches.iter().map(|pair| pair.display.clone()).collect();
+                    println!("{}", display_matches.join("  "));
+                    print!("$ {}", line);
+                    io::stdout().flush().unwrap_or(());
+
+                    // Reset the tab count after displaying
+                    LAST_WORD.with(|last_word_cell| {
+                        TAB_COUNT.with(|tab_count_cell| {
+                            *last_word_cell.borrow_mut() = None;
+                            *tab_count_cell.borrow_mut() = 0;
+                        });
+                    });
+
+                    return Ok((word_start, vec![]));
+                }
+
+                if !should_reset {
+                    return Ok((word_start, vec![]));
+                }
+            } else if matches.len() == 1 {
+                // Single match, reset counter
+                LAST_WORD.with(|last_word_cell| {
+                    TAB_COUNT.with(|tab_count_cell| {
+                        *last_word_cell.borrow_mut() = None;
+                        *tab_count_cell.borrow_mut() = 0;
+                    });
+                });
             }
 
             return Ok((word_start, matches));
