@@ -89,10 +89,12 @@ impl Completer for ShellCompleter {
         // If we're at the first word, complete with built-in commands and executables from PATH
         if words.is_empty() {
             let mut matches = Vec::new();
+            let mut seen_commands = std::collections::HashSet::new();
 
             // Add builtin commands
             let builtin_commands = self.get_builtin_commands();
             for cmd in builtin_commands.iter().filter(|cmd| cmd.starts_with(word)) {
+                seen_commands.insert(cmd.clone());
                 matches.push(Pair {
                     display: cmd.clone(),
                     replacement: format!("{} ", cmd),
@@ -102,14 +104,18 @@ impl Completer for ShellCompleter {
             // Add executables from PATH
             let path_executables = self.get_executables_from_path();
             for cmd in path_executables.iter().filter(|cmd| cmd.starts_with(word)) {
-                // Skip if already added as a builtin
-                if !builtin_commands.contains(cmd) {
+                // Skip if already added as a builtin or already seen
+                if !seen_commands.contains(cmd) {
+                    seen_commands.insert(cmd.clone());
                     matches.push(Pair {
                         display: cmd.clone(),
                         replacement: format!("{} ", cmd),
                     });
                 }
             }
+            
+            // Sort matches alphabetically
+            matches.sort_by(|a, b| a.display.cmp(&b.display));
 
             // Custom TAB completion behavior
             if matches.len() > 1 {
