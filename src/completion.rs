@@ -123,23 +123,25 @@ impl Completer for ShellCompleter {
                 if let Some(common_prefix) = find_longest_common_prefix(&display_values) {
                     // If the common prefix is longer than what the user typed
                     if common_prefix.len() > word.len() {
-                        // Check if the common prefix is a complete match for one of the options
-                        let is_complete_match = display_values.contains(&&common_prefix[..]);
+                        // Check if there are any further common prefixes by checking if
+                        // there exists a match that starts with the common prefix but is longer
+                        let has_further_common_prefix = display_values.iter()
+                            .any(|val| val.len() > common_prefix.len() && val.starts_with(&common_prefix));
                         
                         // Create match with appropriate replacement
                         let new_match = Pair {
                             display: common_prefix.clone(),
-                            replacement: if is_complete_match {
-                                // Complete match gets a space
-                                format!("{} ", common_prefix)
-                            } else {
-                                // Partial match doesn't get a space
+                            replacement: if has_further_common_prefix {
+                                // If there's more to complete, don't add a space
                                 common_prefix.clone()
+                            } else {
+                                // No more common prefix - add space
+                                format!("{} ", common_prefix)
                             },
                         };
                         
-                        // Reset tab count if it's a complete match
-                        if is_complete_match {
+                        // Reset tab count if we've added a space (no more completions)
+                        if !has_further_common_prefix {
                             LAST_WORD.with(|last_word_cell| {
                                 TAB_COUNT.with(|tab_count_cell| {
                                     *last_word_cell.borrow_mut() = None;
